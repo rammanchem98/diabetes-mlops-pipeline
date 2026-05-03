@@ -4,7 +4,7 @@ import torch
 import mlflow.pytorch
 from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from src import  settings
 
 # Global variables for the model and scaler
@@ -13,16 +13,25 @@ scaler = None
 
 
 class ModelInputs(BaseModel):
-    age: float  # Changed to float for calculations
-    sex: float  # Changed to float for calculations
-    bmi: float
-    bp: float
-    s1: float
-    s2: float
-    s3: float
-    s4: float
-    s5: float
-    s6: float
+    # Use Field to enforce the -0.2 to 0.2 scaled range we discussed
+    age: float = Field(..., gt=-0.2, lt=0.2)
+    sex: float = Field(...)
+    bmi: float = Field(..., gt=-0.2, lt=0.2)
+    bp: float = Field(...)
+    s1: float = Field(...)
+    s2: float = Field(...)
+    s3: float = Field(...)
+    s4: float = Field(...)
+    s5: float = Field(...)
+    s6: float = Field(...)
+
+    # The custom validator for "unusual" values
+    @field_validator('bmi')
+    @classmethod
+    def validate_bmi_extremes(cls, v: float) -> float:
+        if abs(v) > 0.15:
+            print(f"Warning: Unusual BMI value detected: {v}")
+        return v
 
 
 @asynccontextmanager
