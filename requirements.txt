@@ -1,7 +1,7 @@
 # Core ML
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.2.0+cpu
-numpy
+numpy<2.0.0  # Force a 1.x version to avoid the _ARRAY_API conflict
 pandas
 scikit-learn
 mlflow
