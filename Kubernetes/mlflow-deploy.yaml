@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: mlflow
-          image: diabetes-mlflow-custom:latest
+          image: rammanchem/diabetes-mlflow
           imagePullPolicy: Never
           ports:
             - containerPort: 5000

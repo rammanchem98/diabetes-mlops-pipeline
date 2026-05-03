@@ -6,8 +6,8 @@ spec:
   template:
     spec:
       containers:
-        - name: trainer
-          image: diabetes-ml-trainer:latest
+        - name: diabetes-trainer
+          image: rammanchem/diabetes-trainer:latest
           imagePullPolicy: Never
           command: ["python", "-m", "src.trainer"]
           env:
