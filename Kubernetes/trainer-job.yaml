@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: diabetes-trainer
+spec:
+  template:
+    spec:
+      containers:
+        - name: trainer
+          image: diabetes-ml-trainer:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "src.trainer"]
+          env:
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlflow-service:5000"
+            - name: ARTIFACT_PATH
+              value: "/mnt/shared/artifacts"
+          volumeMounts:
+            - name: shared-artifacts
+              mountPath: /mnt/shared/artifacts
+      volumes:
+        - name: shared-artifacts
+          persistentVolumeClaim:
+            claimName: artifacts-pvc
+      restartPolicy: OnFailure
+  # Prevents K8s from keeping failed pods forever
+  backoffLimit: 4

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: artifacts-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+
+
+
+# mlflow, trainer, api	Acts as shared memory.
+# The Trainer writes the scaler.pkl here,
+# and the API reads it from the same place later

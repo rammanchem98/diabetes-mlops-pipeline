@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  labels:
+    app: mlflow-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow-server
+  template:
+    metadata:
+      labels:
+        app: mlflow-server
+    spec:
+      containers:
+        - name: mlflow
+          image: diabetes-mlflow-custom:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-db-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-db-secrets
+                  key: POSTGRES_PASSWORD
+          # MLflow uses the --backend-store-uri to connect to Postgres
+          # and --default-artifact-root to store files
+          command: ["mlflow", "server"]
+          args:
+            - "--backend-store-uri"
+            - "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres-service:5432/mlflow"
+            - "--default-artifact-root"
+            - "/mnt/shared/artifacts"
+            - "--host"
+            - "0.0.0.0"
+          volumeMounts:
+            - name: shared-artifacts
+              mountPath: /mnt/shared/artifacts
+      volumes:
+        - name: shared-artifacts
+          persistentVolumeClaim:
+            claimName: artifacts-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-service
+spec:
+  type: NodePort # Use NodePort to access the UI from your browser
+  selector:
+    app: mlflow-server
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 30500 # You can access the UI at http://<node-ip>:30500

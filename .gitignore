@@ -1,0 +1,19 @@
+# Python environment
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# ML Artifacts (Stored in PVC, not Git)
+*.pkl
+*.model
+outputs/
+mlruns/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local Secrets
+.env
