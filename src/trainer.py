@@ -57,6 +57,8 @@ def run_training():
         # Log training parameters
         mlflow.log_param("split_ratio", "60/20/20")
         mlflow.log_param("learning_rate", 0.01)
+        mlflow.log_param("model_architecture", str(model))
+        mlflow.log_param("batch_size", "Full Batch")
 
         epochs = 150
         for epoch in range(epochs):

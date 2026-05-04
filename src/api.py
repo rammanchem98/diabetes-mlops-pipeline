@@ -14,10 +14,10 @@ scaler = None
 
 class ModelInputs(BaseModel):
     # Use Field to enforce the -0.2 to 0.2 scaled range we discussed
-    age: float = Field(..., gt=-0.2, lt=0.2)
-    sex: float = Field(...)
-    bmi: float = Field(..., gt=-0.2, lt=0.2)
-    bp: float = Field(...)
+    age: float = Field(..., ge=0, le=120, description="Age should be between 0 and 120")
+    sex: float = Field(...,description="0 for Male and 1 for Female")
+    bmi: float = Field(..., ge=10, le=60, description="Actual BMI")
+    bp: float = Field(...,ge=50,le=200, description="Blood Pressure")
     s1: float = Field(...)
     s2: float = Field(...)
     s3: float = Field(...)
@@ -25,13 +25,13 @@ class ModelInputs(BaseModel):
     s5: float = Field(...)
     s6: float = Field(...)
 
-    # The custom validator for "unusual" values
-    @field_validator('bmi')
-    @classmethod
-    def validate_bmi_extremes(cls, v: float) -> float:
-        if abs(v) > 0.15:
-            print(f"Warning: Unusual BMI value detected: {v}")
-        return v
+    # # The custom validator for "unusual" values
+    # @field_validator('bmi')
+    # @classmethod
+    # def validate_bmi_extremes(cls, v: float) -> float:
+    #     if abs(v) > 0.15:
+    #         print(f"Warning: Unusual BMI value detected: {v}")
+    #     return v
 
 
 @asynccontextmanager
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
         yield  # Application starts here
 
     except Exception as e:
-        print(f"Failed to load model and scaler. Error: {e}")
+        print(f"Failed to load model or scaler. Error: {e}")
         raise e
 
     finally:
@@ -73,19 +73,20 @@ def health_check():
     # This endpoint powers your Kubernetes Readiness Probe[cite: 1]
     if model is None or scaler is None:
         raise HTTPException(status_code=503, detail="Model or Scaler not loaded")
-    return {"status": "OK"}
+    return {"status": "OK, Model and Scaler Loaded"}
 
 
 @app.post("/predict")
 async def predict(request: ModelInputs):
     if model is None or scaler is None:
-        raise HTTPException(status_code=503, detail="Model not ready")
+        raise HTTPException(status_code=503, detail="Model or Scaler not  ready")
 
     try:
         # 1. Convert Pydantic object to list of values
         data_list = [list(request.model_dump().values())]
 
-        # 2. Scale the data
+        # 2. CONVERSION STEP: This uses the Mean/SD from your training data
+        # This turns "45 years" into "-0.0234" (scaled)
         scaled_data = scaler.transform(data_list)
 
         # 3. Convert to Tensor
@@ -95,7 +96,21 @@ async def predict(request: ModelInputs):
         with torch.no_grad():
             prediction = model(input_tensor)
 
-        return {"prediction": float(prediction.item())}  # convert tensor to float which is helpful for api
+        if prediction < 100:
+            risk_level = "Good (Low Risk)"
+            recommendation = "Maintain your current healthy lifestyle."
+        elif 100 <= prediction <= 200:
+            risk_level = "Average (Moderate Risk)"
+            recommendation = "Consider a follow-up consultation and diet review."
+        else:
+            risk_level = "High Risk"
+            recommendation = "Consult a healthcare professional immediately."
+
+        return {
+            "Prediction": float(prediction.item()),
+            "Level of Risk": risk_level,
+            "Recommendation": recommendation
+        }
 
     except Exception as e:
         # Use 400 for input errors, 500 for server/logic errors
